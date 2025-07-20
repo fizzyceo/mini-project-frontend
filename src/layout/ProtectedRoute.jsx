@@ -1,59 +1,68 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
+
 /**
- * <ProtecteRoute >
- * <Dashboard />
+ * <ProtectedRoute>
+ *   <Dashboard />
  * </ProtectedRoute> is a component that checks if the user is authenticated.
  */
 const ProtectedRoute = ({ children }) => {
   const [isAuth, setIsAuth] = useState(false);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    setLoading(true);
     async function checkAuthentication() {
-      const token = localStorage.getItem("token");
-      console.log(token);
+      try {
+        const token = localStorage.getItem("token");
+        console.log("Token:", token);
 
-      if (!token) {
-        window.location.href = "/login";
-      } else {
-        try {
-          console.log("Token found, verifying...");
-
-          // You can add further validation of the token here if needed
-          const reponse = await axios.post(
-            "http://localhost:5000/auth/verify",
-            {
-              token: token,
-            }
-          );
-
-          console.log("Response from server:", reponse);
-
-          if (reponse.status !== 200) {
-            window.location.href = "/login";
-          } else {
-            setIsAuth(true);
-            console.log("Token is valid.");
-          }
-        } catch (error) {
-          console.error("Error verifying token:", error);
-          window.location.href = "/login";
+        if (!token) {
+          console.log("No token found");
+          setIsAuth(false);
+          setLoading(false);
+          return;
         }
+
+        console.log("Token found, verifying...");
+
+        const response = await axios.post("http://localhost:5000/auth/verify", {
+          token: token,
+        });
+
+        console.log("Response from server:", response);
+
+        if (response.status === 200) {
+          setIsAuth(true);
+          console.log("Token is valid.");
+        } else {
+          setIsAuth(false);
+          console.log("Token is invalid.");
+        }
+      } catch (error) {
+        console.error("Error verifying token:", error);
+        setIsAuth(false);
+      } finally {
+        // Always set loading to false when done
+        setLoading(false);
       }
     }
 
     checkAuthentication();
-    setLoading(false);
   }, []);
+
+  // Show loading state while checking authentication
   if (loading) {
     return <div>Checking Auth...</div>;
   }
+
+  // Redirect to login if not authenticated
   if (!isAuth) {
     return <Navigate to="/login" replace />;
   }
-  return <div>{children}</div>;
+
+  // Render children if authenticated
+  return <>{children}</>;
 };
 
 export default ProtectedRoute;
